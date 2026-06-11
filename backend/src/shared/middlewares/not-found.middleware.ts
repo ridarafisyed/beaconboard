@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 
-export const notFountMiddleware = (
+export const notFoundMiddleware = (
     req: Request, 
     res: Response
 ) => {
