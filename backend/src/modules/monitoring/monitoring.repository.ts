@@ -20,6 +20,19 @@ class MonitoringRepository {
       },
     });
   }
+
+  async getHistory(limit: number, offset: number) {
+    const [records, total] = await Promise.all([
+      prisma.pingResult.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.pingResult.count(),
+    ]);
+
+    return { records, total };
+  }
 }
 
 export const monitoringRepository = new MonitoringRepository();
