@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model PingResult {
+  id             String   @id @default(cuid())
+  requestId      String   @unique
+  timestamp      DateTime
+  statusCode     Int
+  responseTimeMs Int
+  eventType      String
+  environment    String
+  retry          Boolean  @default(false)
+  responseBody   Json
+
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([statusCode])
+}
