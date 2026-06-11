@@ -1,4 +1,5 @@
 import { httpBinClient } from './httpbin.client.ts';
+import { monitoringEvents } from './monitoring.events.ts';
 import { generateMonitoringPayload } from './payload-generator.ts';
 import { monitoringRepository } from './monitoring.repository.ts';
 
@@ -8,9 +9,11 @@ class MonitoringService {
 
     const result = await httpBinClient.ping(payload);
 
-    await monitoringRepository.savePingResult(result);
+    const saved = await monitoringRepository.savePingResult(result);
 
-    return result;
+    monitoringEvents.emitPingResult(saved);
+
+    return saved;
   }
 
   async getHistory(page: number, limit: number) {

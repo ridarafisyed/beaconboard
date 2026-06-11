@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import { triggerMonitoringJob, getMonitoringHistory } from './monitoring.controller.ts';
+import { triggerMonitoringJob, getMonitoringHistory, subscribeToPingResults } from './monitoring.controller.ts';
 import { asyncHandler } from '@/shared/utils/async-handler.ts';
 
 const router = Router();
@@ -44,5 +44,22 @@ router.post('/jobs/ping', asyncHandler(triggerMonitoringJob));
  *         description: Paginated list of ping results
  */
 router.get('/history', asyncHandler(getMonitoringHistory));
+
+/**
+ * @openapi
+ * /monitoring/events:
+ *   get:
+ *     summary: Subscribe to real-time ping result events (SSE)
+ *     tags:
+ *       - Monitoring
+ *     responses:
+ *       200:
+ *         description: Server-Sent Events stream of ping results
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: string
+ */
+router.get('/events', subscribeToPingResults);
 
 export default router;
