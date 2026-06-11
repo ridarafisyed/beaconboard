@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { isAxiosError } from 'axios';
 
 import { monitoringService } from '@/modules/monitoring/monitoring.service.ts';
 
@@ -15,7 +16,11 @@ class MonitoringJob {
 
       return result;
     } catch (error) {
-      console.error('Monitoring job failed:', error);
+      if (isAxiosError(error)) {
+        console.error(`Monitoring job failed: ${error.code ?? 'UNKNOWN'} — ${error.message} (url: ${error.config?.url})`);
+      } else {
+        console.error('Monitoring job failed:', error instanceof Error ? error.message : error);
+      }
       throw error;
     }
   }
@@ -24,8 +29,8 @@ class MonitoringJob {
     if (this.task) return;
 
     this.task = cron.schedule('*/5 * * * *', () => {
-      this.run().catch((error) => {
-        console.error('Monitoring cron encountered an unhandled error:', error instanceof Error ? error.message : error);
+      this.run().catch(() => {
+        // error already logged in run()
       });
     });
 
