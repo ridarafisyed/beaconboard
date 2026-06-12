@@ -3,6 +3,7 @@ import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 
 import { env } from '@/config/env.ts';
+import aiRoutes from '@/modules/ai/ai.routes.ts';
 import healthRoutes from '@/modules/health/health.routes.ts';
 import monitoringRoutes from '@/modules/monitoring/monitoring.routes.ts';
 import { notFoundMiddleware } from '@/shared/middlewares/not-found.middleware.ts';
@@ -20,6 +21,7 @@ const apiRouter = Router();
 
 apiRouter.use('/health', healthRoutes);
 apiRouter.use('/monitoring', monitoringRoutes);
+apiRouter.use('/ai', aiRoutes);
 
 
 app.use(`/api/${env.apiVersion}`, apiRouter);

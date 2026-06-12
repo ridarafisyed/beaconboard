@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { AIInsightsCard } from '@/components/AIInsightsCard';
 import { FilterBar } from '@/components/FilterBar';
 import { IncidentsCard } from '@/components/IncidentsCard';
 import { LiveIndicator } from '@/components/LiveIndicator';
@@ -111,6 +112,13 @@ function Dashboard() {
       {rawResults.length > 0 && (
         <div className="mb-6">
           <IncidentsCard results={rawResults} />
+        </div>
+      )}
+
+      {/* AI Insights */}
+      {rawResults.length > 0 && (
+        <div className="mb-6">
+          <AIInsightsCard />
         </div>
       )}
 

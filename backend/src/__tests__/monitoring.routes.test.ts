@@ -15,6 +15,8 @@
  *  GET  /api/v1/monitoring/events    — SSE headers, listener registration
  */
 
+import http from 'http';
+import type { AddressInfo } from 'net';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 
@@ -186,51 +188,50 @@ describe('GET /api/v1/monitoring/history', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/monitoring/events  (SSE)
+// Uses raw http.get so we can read headers then destroy the socket immediately
+// without supertest waiting for the stream to close.
 // ─────────────────────────────────────────────────────────────────────────────
+
+function sseHeaders(path: string): Promise<http.IncomingHttpHeaders> {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer(app);
+    server.listen(0, () => {
+      const { port } = server.address() as AddressInfo;
+      const req = http.get(`http://localhost:${port}${path}`, (res) => {
+        resolve(res.headers);
+        res.destroy();
+        req.destroy();
+        server.close();
+      });
+      req.on('error', (e) => { server.close(); reject(e); });
+    });
+  });
+}
 
 describe('GET /api/v1/monitoring/events', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('responds with text/event-stream content-type', (done) => {
+  it('responds with text/event-stream content-type', async () => {
     vi.mocked(monitoringEvents.onPingResult).mockReturnValue(vi.fn());
-
-    const req = request(app)
-      .get('/api/v1/monitoring/events')
-      .on('response', (res) => {
-        expect(res.headers['content-type']).toContain('text/event-stream');
-        req.abort();
-        done();
-      });
-
-    req.end(() => {});
+    const headers = await sseHeaders('/api/v1/monitoring/events');
+    expect(headers['content-type']).toContain('text/event-stream');
   });
 
-  it('sets Cache-Control: no-cache and Connection: keep-alive', (done) => {
+  it('sets Cache-Control: no-cache', async () => {
     vi.mocked(monitoringEvents.onPingResult).mockReturnValue(vi.fn());
-
-    const req = request(app)
-      .get('/api/v1/monitoring/events')
-      .on('response', (res) => {
-        expect(res.headers['cache-control']).toBe('no-cache');
-        expect(res.headers['connection']).toBe('keep-alive');
-        req.abort();
-        done();
-      });
-
-    req.end(() => {});
+    const headers = await sseHeaders('/api/v1/monitoring/events');
+    expect(headers['cache-control']).toBe('no-cache');
   });
 
-  it('registers an onPingResult listener when a client connects', (done) => {
+  it('sets Connection: keep-alive', async () => {
     vi.mocked(monitoringEvents.onPingResult).mockReturnValue(vi.fn());
+    const headers = await sseHeaders('/api/v1/monitoring/events');
+    expect(headers['connection']).toBe('keep-alive');
+  });
 
-    const req = request(app)
-      .get('/api/v1/monitoring/events')
-      .on('response', () => {
-        expect(monitoringEvents.onPingResult).toHaveBeenCalledOnce();
-        req.abort();
-        done();
-      });
-
-    req.end(() => {});
+  it('registers an onPingResult listener when a client connects', async () => {
+    vi.mocked(monitoringEvents.onPingResult).mockReturnValue(vi.fn());
+    await sseHeaders('/api/v1/monitoring/events');
+    expect(monitoringEvents.onPingResult).toHaveBeenCalledOnce();
   });
 });

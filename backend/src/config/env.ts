@@ -9,4 +9,5 @@ export const env = {
   httpBinBaseUrl: process.env.HTTPBIN_BASE_URL || 'https://httpbin.org',
   corsOrigin: process.env.CORS_ORIGIN || '*',
   databaseUrl: process.env.DATABASE_URL || '',
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
 };

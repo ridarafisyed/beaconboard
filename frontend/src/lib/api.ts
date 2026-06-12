@@ -3,9 +3,21 @@ import type { PaginatedResponse } from './types';
 const BASE = '/api/v1';
 
 async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) throw new Error(`Request failed: ${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(body.message ?? `Request failed: ${res.status} ${res.statusText}`);
+  }
   return res.json() as Promise<T>;
 }
+
+export type AiInsight = {
+  headline: string;
+  status: 'healthy' | 'degraded' | 'critical';
+  observations: string[];
+  recommendation: string;
+  recordsAnalyzed: number;
+  generatedAt: string;
+};
 
 export const api = {
   getHistory: (page: number, limit = 20): Promise<PaginatedResponse> =>
@@ -17,6 +29,9 @@ export const api = {
     fetch(`${BASE}/monitoring/jobs/ping`, { method: 'POST' }).then((res) =>
       handleResponse<unknown>(res)
     ),
+
+  getInsights: (): Promise<AiInsight> =>
+    fetch(`${BASE}/ai/insights`).then((res) => handleResponse<AiInsight>(res)),
 
   eventsUrl: () => `${BASE}/monitoring/events`,
 };
