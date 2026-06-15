@@ -1,4 +1,5 @@
 export type InsightStatus = 'healthy' | 'degraded' | 'critical';
+export type TrendDirection = 'increasing' | 'decreasing' | 'stable';
 
 export type AiInsight = {
   headline: string;
@@ -7,4 +8,13 @@ export type AiInsight = {
   recommendation: string;
   recordsAnalyzed: number;
   generatedAt: string;
+  successRate: number;
+  avgResponseTimeMs: number;
+  minResponseTimeMs: number;
+  maxResponseTimeMs: number;
+  recentAvgMs: number;
+  olderAvgMs: number;
+  trend: TrendDirection;
+  failureCount: number;
+  errorCodes: number[];
 };

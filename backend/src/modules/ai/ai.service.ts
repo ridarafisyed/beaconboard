@@ -10,26 +10,39 @@ class AiService {
   // GEMINI_BASE_URL is "https://generativelanguage.googleapis.com/v1beta"
   // The SDK expects baseUrl (origin) and apiVersion (e.g. "v1beta") separately.
   private buildRequestOptions(): RequestOptions {
-    if (!env.geminiBaseUrl) return {};
+    if (!env.geminiBaseUrl) {
+      console.debug('[AI] No GEMINI_BASE_URL set — using SDK default endpoint');
+      return {};
+    }
     try {
       const url = new URL(env.geminiBaseUrl);
       const versionMatch = url.pathname.match(/\/(v\d+(?:beta)?)\/?$/);
-      return {
+      const opts: RequestOptions = {
         baseUrl: url.origin,
         ...(versionMatch?.[1] ? { apiVersion: versionMatch[1] } : {}),
       };
-    } catch {
+      console.debug('[AI] Using custom base URL:', url.origin, '| apiVersion:', opts.apiVersion ?? '(sdk default)');
+      return opts;
+    } catch (err) {
+      console.warn('[AI] GEMINI_BASE_URL is set but failed to parse:', env.geminiBaseUrl, err);
       return {};
     }
   }
 
   private getModel() {
+    console.debug('[AI] GEMINI_API_KEY present:', !!env.geminiApiKey);
+    console.debug('[AI] GEMINI_MODEL:', env.geminiModel);
+    console.debug('[AI] GEMINI_BASE_URL:', env.geminiBaseUrl || '(not set)');
+
     if (!env.geminiApiKey) {
+      console.error('[AI] Missing GEMINI_API_KEY — cannot initialise model');
       throw new AppError(503, 'AI insights are not configured. Set GEMINI_API_KEY to enable this feature.');
     }
+    const requestOptions = this.buildRequestOptions();
+    console.debug('[AI] Request options:', JSON.stringify(requestOptions));
     return new GoogleGenerativeAI(env.geminiApiKey).getGenerativeModel(
       { model: env.geminiModel },
-      this.buildRequestOptions()
+      requestOptions
     );
   }
 
@@ -92,17 +105,33 @@ Reply with ONLY a valid JSON object, no markdown fences, no extra text:
 Status rules: healthy = success rate >= 90%; degraded = 70–89%; critical = < 70%.`;
 
     const model = this.getModel();
-    const result = await model.generateContent(prompt);
+    console.debug('[AI] Sending prompt to Gemini (%d chars, %d records)', prompt.length, records.length);
+
+    let result: Awaited<ReturnType<typeof model.generateContent>>;
+    try {
+      result = await model.generateContent(prompt);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[AI] Gemini API call failed:', msg);
+      // Surface the raw error so it's visible in logs even if caught upstream
+      console.error('[AI] Full error:', err);
+      throw err;
+    }
+
+    console.debug('[AI] Gemini response received');
 
     // Strip markdown fences in case the model wraps the response
     const raw = result.response.text().trim()
       .replace(/^```(?:json)?\n?/, '')
       .replace(/\n?```$/, '');
 
-    let parsed: Omit<AiInsight, 'recordsAnalyzed' | 'generatedAt'>;
+    console.debug('[AI] Raw response text:', raw);
+
+    let parsed: Pick<AiInsight, 'headline' | 'status' | 'observations' | 'recommendation'>;
     try {
       parsed = JSON.parse(raw) as typeof parsed;
     } catch {
+      console.error('[AI] JSON parse failed. Raw text was:', raw);
       throw new AppError(500, 'AI returned an unexpected response format. Please try again.');
     }
 
@@ -110,6 +139,15 @@ Status rules: healthy = success rate >= 90%; degraded = 70–89%; critical = < 7
       ...parsed,
       recordsAnalyzed: records.length,
       generatedAt: new Date().toISOString(),
+      successRate,
+      avgResponseTimeMs: avgMs,
+      minResponseTimeMs: minMs,
+      maxResponseTimeMs: maxMs,
+      recentAvgMs: recentAvg,
+      olderAvgMs: olderAvg,
+      trend,
+      failureCount: failures.length,
+      errorCodes,
     };
   }
 }

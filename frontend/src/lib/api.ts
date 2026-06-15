@@ -17,6 +17,15 @@ export type AiInsight = {
   recommendation: string;
   recordsAnalyzed: number;
   generatedAt: string;
+  successRate: number;
+  avgResponseTimeMs: number;
+  minResponseTimeMs: number;
+  maxResponseTimeMs: number;
+  recentAvgMs: number;
+  olderAvgMs: number;
+  trend: 'increasing' | 'decreasing' | 'stable';
+  failureCount: number;
+  errorCodes: number[];
 };
 
 export const api = {
