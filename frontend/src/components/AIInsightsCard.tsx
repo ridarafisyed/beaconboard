@@ -83,16 +83,13 @@ function SuccessRing({ rate, status }: { rate: number; status: Status }) {
   );
 }
 
-const barTooltipStyle = {
-  contentStyle: {
-    borderRadius: '8px',
-    border: '1px solid #e5e7eb',
-    fontSize: 11,
-    padding: '4px 8px',
-  },
-  formatter: (v: number) => [`${v}ms`] as [string],
-  labelStyle: { color: '#6b7280', fontSize: 10 },
+const tooltipContentStyle = {
+  borderRadius: '8px',
+  border: '1px solid #e5e7eb',
+  fontSize: 11,
+  padding: '4px 8px',
 };
+const tooltipLabelStyle = { color: '#6b7280', fontSize: 10 };
 
 export function AIInsightsCard() {
   const [insight, setInsight] = useState<AiInsight | null>(null);
@@ -230,7 +227,11 @@ export function AIInsightsCard() {
                       tickLine={false}
                       axisLine={false}
                     />
-                    <Tooltip {...barTooltipStyle} />
+                    <Tooltip
+                      contentStyle={tooltipContentStyle}
+                      labelStyle={tooltipLabelStyle}
+                      formatter={(v: number) => [`${v}ms`]}
+                    />
                     <Bar dataKey="ms" radius={[3, 3, 0, 0]}>
                       <Cell fill="#d1d5db" />
                       <Cell fill={cfg.barColor} />
@@ -263,7 +264,11 @@ export function AIInsightsCard() {
                       tickLine={false}
                       axisLine={false}
                     />
-                    <Tooltip {...barTooltipStyle} />
+                    <Tooltip
+                      contentStyle={tooltipContentStyle}
+                      labelStyle={tooltipLabelStyle}
+                      formatter={(v: number) => [`${v}ms`]}
+                    />
                     <Bar dataKey="ms" radius={[3, 3, 0, 0]}>
                       <Cell fill="#d1d5db" />
                       <Cell fill={trendBarColor} />
