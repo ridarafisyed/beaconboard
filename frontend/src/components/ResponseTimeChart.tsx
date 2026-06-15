@@ -59,7 +59,7 @@ export function ResponseTimeChart({ results }: Props) {
           />
           <Tooltip
             contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: 12 }}
-            formatter={(v: number) => [`${v} ms`, 'Response Time']}
+            formatter={(v: number | string | ReadonlyArray<number | string> | undefined) => [`${v ?? 0} ms`, 'Response Time']}
           />
           <ReferenceLine y={avg} stroke="#d1d5db" strokeDasharray="4 4" />
           <Line
@@ -67,7 +67,7 @@ export function ResponseTimeChart({ results }: Props) {
             dataKey="ms"
             stroke="#2563eb"
             strokeWidth={2}
-            dot={({ cx, cy, payload }: { cx: number; cy: number; payload: ChartPoint }) => (
+            dot={({ cx, cy, payload }: { cx?: number; cy?: number; payload: ChartPoint }) => (
               <circle
                 key={`${cx}-${cy}`}
                 cx={cx}

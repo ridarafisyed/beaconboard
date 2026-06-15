@@ -230,7 +230,7 @@ export function AIInsightsCard() {
                     <Tooltip
                       contentStyle={tooltipContentStyle}
                       labelStyle={tooltipLabelStyle}
-                      formatter={(v: number) => [`${v}ms`]}
+                      formatter={(v: number | string | ReadonlyArray<number | string> | undefined) => [`${v ?? 0}ms`]}
                     />
                     <Bar dataKey="ms" radius={[3, 3, 0, 0]}>
                       <Cell fill="#d1d5db" />
@@ -267,7 +267,7 @@ export function AIInsightsCard() {
                     <Tooltip
                       contentStyle={tooltipContentStyle}
                       labelStyle={tooltipLabelStyle}
-                      formatter={(v: number) => [`${v}ms`]}
+                      formatter={(v: number | string | ReadonlyArray<number | string> | undefined) => [`${v ?? 0}ms`]}
                     />
                     <Bar dataKey="ms" radius={[3, 3, 0, 0]}>
                       <Cell fill="#d1d5db" />
