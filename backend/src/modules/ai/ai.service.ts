@@ -256,3 +256,8 @@ export const _resetForTesting = () => {
   callLog.length = 0;
   cache = null;
 };
+
+// Pre-fill the rate-limit window with N recent timestamps — not part of the public API
+export const _prefillCallLogForTesting = (count: number) => {
+  for (let i = 0; i < count; i++) callLog.push(Date.now());
+};

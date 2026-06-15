@@ -32,7 +32,7 @@ On the dashboard you get:
 - **Stat cards** — total pings, average response time, and success rate at a glance
 - **Response time chart** — a line chart of recent pings, green dot for success, red for failure
 - **Incidents** — failures grouped by error code so you can see patterns quickly
-- **AI Insights** — powered by Google Gemini; analyses the last 50 pings and returns a headline, specific observations, and a recommendation, visualised with a success-rate ring, a response-time bar chart, and a trend comparison
+- **AI Insights** — powered by Google Gemini; analyses the last 50 pings and returns a headline, specific observations, and a recommendation, visualised with a success-rate ring, a response-time bar chart, and a trend comparison. Includes a 5-minute response cache, a sliding-window rate limit (20 requests per hour), and token cost estimation displayed in the UI
 - **History table** — every ping on record, filterable by status, event type, and date range, with pagination
 
 ---
@@ -131,6 +131,8 @@ Beaconboard is split into two independent apps that talk through a REST API and 
 │          └── MonitoringEvents.emit()      (push via SSE)    │
 │                                                             │
 │  AiService                                                  │
+│    ├── 5-min in-memory cache (skips API on hit)             │
+│    ├── sliding-window rate limiter (20 calls / hour)        │
 │    └── reads last 50 records → computes stats               │
 │          └── sends prompt to Gemini → returns insights      │
 │                                                             │
@@ -140,7 +142,7 @@ Beaconboard is split into two independent apps that talk through a REST API and 
 
 **How live updates work:** The backend holds open an SSE connection for each connected browser tab. When a ping completes, it emits an in-process event via Node's `EventEmitter`. The SSE handler picks that up and writes it to the response stream. The frontend reconnects automatically with exponential backoff if the connection drops.
 
-**How AI insights work:** The AI service reads the last 50 ping records directly from the database, computes a set of statistics (success rate, avg/min/max response time, trend direction, failure codes), builds a structured prompt, and sends it to Gemini. The model returns a JSON object with a headline, observations, and a recommendation. The computed stats are also returned alongside the AI text so the frontend can render charts without a second request.
+**How AI insights work:** On each request the service first checks an in-memory 5-minute cache — if a fresh result exists it is returned immediately without touching the API. If not, a sliding-window counter enforces a maximum of 20 Gemini calls per hour; once the limit is reached the service returns the stale cache as a fallback rather than blocking the user entirely. On a cache miss that passes the rate check, the service reads the last 50 ping records, computes statistics (success rate, avg/min/max response time, trend direction, failure codes), calls `countTokens` to estimate input size, sends a structured prompt to Gemini, and parses the JSON response. The computed stats and token cost estimate are returned alongside the AI text so the frontend can render charts and the cost footer without a second request.
 
 ---
 
@@ -216,11 +218,11 @@ These are the components where a bug would cause silent data loss or wrong resul
 
 **`monitoring.service.ts`** — the heart of the app. Tests verify that a full monitoring cycle (payload generation → ping → save → SSE emit) runs correctly, and that errors from the HTTP client are propagated rather than swallowed.
 
-**`ai.service.ts`** — tests verify the statistics computed from raw records (success rate, trend direction, avg/min/max) before they are sent to Gemini, since bad inputs produce meaningless AI output.
+**`ai.service.ts`** — tests verify the statistics computed from raw records (success rate, trend direction, avg/min/max), the 5-minute response cache (second call returns `fromCache: true` without hitting Gemini), the sliding-window rate limiter (21st call in an hour throws 429), token usage fields, stale-cache fallback when the rate limit is hit, and prompt content — since bad inputs produce meaningless AI output regardless of model quality.
 
 **`payload-generator.ts`** — small but important. Verifies that every generated payload has a unique `requestId`, a valid ISO timestamp, and one of the three allowed event types.
 
-**Frontend `AIInsightsCard`** — the most complex UI component. Tests verify that the empty state, loading state, error state, and populated state all render correctly, and that clicking Regenerate calls the API again.
+**Frontend `AIInsightsCard`** — the most complex UI component. Tests verify that the empty state, loading state, error state, and populated state all render correctly, that the cache badge appears only on cached responses, and that clicking Regenerate calls the API again.
 
 ### What is not tested (and why)
 
@@ -261,11 +263,11 @@ These are things that were consciously left out due to time constraints, not ove
 - **Multi-target monitoring.** Let users add their own URLs to monitor, with separate history and stats per target.
 - **Alerting.** Send an email or Slack message when the success rate drops below a threshold.
 - **Integration tests.** Run tests against a real Neon branch (Neon supports database branching, which is perfect for this) so the repository layer is covered without mocks.
-- **Rate limiting.** Add a simple rate limiter on the trigger and AI endpoints to prevent abuse.
+- **Persistent rate-limit counter.** The current AI rate limiter resets when the server restarts because the call log is in-memory. A Redis counter or a lightweight DB column would survive deploys.
 - **Authentication.** Even a simple API key check on write endpoints would make it safe to expose publicly.
 - **Configurable polling interval.** Expose the cron schedule as an environment variable.
 - **Historical trend view.** Charts that span days or weeks, not just the most recent page of results.
-- **Retry logic on AI calls.** The Gemini API occasionally returns 503 under load. A simple exponential-backoff retry (max 2 attempts) would make the feature more reliable without much code.
+- **Retry logic on AI calls.** The Gemini API occasionally returns 503 under load. The service already returns a stale cache as a safety net, but an exponential-backoff retry (max 2 attempts) before falling back would improve reliability further.
 
 ---
 
@@ -279,7 +281,8 @@ Full interactive docs are at `/api-docs` on the running backend. Quick reference
 | `POST` | `/api/v1/monitoring/jobs/ping` | Trigger a manual ping |
 | `GET` | `/api/v1/monitoring/history?page=1&limit=20` | Paginated ping history |
 | `GET` | `/api/v1/monitoring/events` | SSE stream of live results |
-| `GET` | `/api/v1/ai/insights` | Generate AI health summary |
+| `GET` | `/api/v1/ai/insights` | Generate AI health summary (cached 5 min) |
+| `GET` | `/api/v1/ai/rate-limit` | Current AI rate limit status (used / remaining / reset time) |
 
 ---
 

@@ -19,7 +19,7 @@ vi.mock('@/modules/monitoring/monitoring.repository.ts', () => ({
 }));
 
 import { monitoringRepository } from '@/modules/monitoring/monitoring.repository.ts';
-import { aiService, _resetForTesting } from '@/modules/ai/ai.service.ts';
+import { aiService, _resetForTesting, _prefillCallLogForTesting } from '@/modules/ai/ai.service.ts';
 import { env } from '@/config/env.ts';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -277,6 +277,109 @@ describe('AiService.generateInsights', () => {
     it('does not throw when GEMINI_BASE_URL is an invalid URL', async () => {
       env.geminiBaseUrl = 'not-a-url';
       await expect(aiService.generateInsights()).resolves.toMatchObject({ status: 'healthy' });
+    });
+  });
+
+  // ── response cache ─────────────────────────────────────────────────────────
+
+  describe('response cache', () => {
+    beforeEach(() => {
+      vi.mocked(monitoringRepository.getHistory).mockResolvedValue({
+        records: Array.from({ length: 5 }, () => makeRecord()),
+        total: 5,
+      });
+      mockGenerateContent.mockResolvedValue(geminiResponse(validInsightJson));
+    });
+
+    it('serves the second call from cache without hitting Gemini again', async () => {
+      await aiService.generateInsights();
+      await aiService.generateInsights();
+      expect(mockGenerateContent).toHaveBeenCalledOnce();
+    });
+
+    it('sets fromCache=false on the first call', async () => {
+      const result = await aiService.generateInsights();
+      expect(result.fromCache).toBe(false);
+    });
+
+    it('sets fromCache=true on the second call within the TTL', async () => {
+      await aiService.generateInsights();
+      const cached = await aiService.generateInsights();
+      expect(cached.fromCache).toBe(true);
+    });
+  });
+
+  // ── rate limiting ──────────────────────────────────────────────────────────
+
+  describe('rate limiting', () => {
+    beforeEach(() => {
+      vi.mocked(monitoringRepository.getHistory).mockResolvedValue({
+        records: Array.from({ length: 5 }, () => makeRecord()),
+        total: 5,
+      });
+      mockGenerateContent.mockResolvedValue(geminiResponse(validInsightJson));
+    });
+
+    it('throws 429 AppError once 20 calls have been made in the current window', async () => {
+      _prefillCallLogForTesting(20);
+
+      await expect(aiService.generateInsights()).rejects.toMatchObject({
+        statusCode: 429,
+        message: expect.stringContaining('Rate limit reached'),
+      });
+    });
+
+    it('does not call Gemini when the rate limit is already exhausted', async () => {
+      _prefillCallLogForTesting(20);
+
+      await aiService.generateInsights().catch(() => {});
+
+      expect(mockGenerateContent).not.toHaveBeenCalled();
+    });
+
+    it('decrements the remaining count after each fresh call', async () => {
+      const first = await aiService.generateInsights();
+      expect(first.rateLimit.remaining).toBe(19);
+    });
+
+    it('returns stale cache instead of 429 when the limit is hit and a prior result is cached', async () => {
+      // Populate the cache with one real call
+      await aiService.generateInsights();
+
+      // Exhaust the rate limit without clearing the cache
+      _prefillCallLogForTesting(19); // 1 already consumed above → total 20
+
+      // Next call should return the stale cache, not throw
+      const fallback = await aiService.generateInsights();
+      expect(fallback.fromCache).toBe(true);
+    });
+  });
+
+  // ── token usage ────────────────────────────────────────────────────────────
+
+  describe('token usage', () => {
+    beforeEach(() => {
+      vi.mocked(monitoringRepository.getHistory).mockResolvedValue({
+        records: Array.from({ length: 5 }, () => makeRecord()),
+        total: 5,
+      });
+      mockGenerateContent.mockResolvedValue(geminiResponse(validInsightJson));
+    });
+
+    it('attaches inputTokens from the countTokens response', async () => {
+      mockCountTokens.mockResolvedValue({ totalTokens: 800 });
+      const result = await aiService.generateInsights();
+      expect(result.tokenUsage.inputTokens).toBe(800);
+    });
+
+    it('attaches outputTokens from usageMetadata', async () => {
+      const result = await aiService.generateInsights();
+      expect(result.tokenUsage.outputTokens).toBe(120);
+    });
+
+    it('attaches a non-negative estimatedCostUsd', async () => {
+      const result = await aiService.generateInsights();
+      expect(result.tokenUsage.estimatedCostUsd).toBeGreaterThanOrEqual(0);
     });
   });
 
