@@ -15,6 +15,7 @@ const app = express();
 
 app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json());
+app.get('/', (_req, res) => res.redirect('/api-docs'));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const apiRouter = Router();
