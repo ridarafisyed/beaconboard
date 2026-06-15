@@ -13,4 +13,4 @@ RUN npm run build
 
 EXPOSE 5000
 
-CMD ["npm", "start"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && npm start"]
