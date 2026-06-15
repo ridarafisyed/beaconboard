@@ -1,18 +1,18 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 import { env } from '@/config/env.ts';
 import { monitoringRepository } from '@/modules/monitoring/monitoring.repository.ts';
 import { AppError } from '@/shared/errors/app-error.ts';
 import type { AiInsight } from './ai.types.ts';
 
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = 'gemini-2.0-flash';
 
 class AiService {
-  private getClient(): Anthropic {
-    if (!env.anthropicApiKey) {
-      throw new AppError(503, 'AI insights are not configured. Set ANTHROPIC_API_KEY to enable this feature.');
+  private getModel() {
+    if (!env.geminiApiKey) {
+      throw new AppError(503, 'AI insights are not configured. Set GEMINI_API_KEY to enable this feature.');
     }
-    return new Anthropic({ apiKey: env.anthropicApiKey });
+    return new GoogleGenerativeAI(env.geminiApiKey).getGenerativeModel({ model: MODEL });
   }
 
   async generateInsights(limit = 50): Promise<AiInsight> {
@@ -28,7 +28,6 @@ class AiService {
     const minMs = Math.min(...records.map((r) => r.responseTimeMs));
     const maxMs = Math.max(...records.map((r) => r.responseTimeMs));
 
-    // Compare newest half vs oldest half to detect trends
     const half = Math.floor(records.length / 2);
     const recentAvg = Math.round(records.slice(0, half).reduce((s, r) => s + r.responseTimeMs, 0) / half);
     const olderAvg = Math.round(records.slice(half).reduce((s, r) => s + r.responseTimeMs, 0) / half);
@@ -74,15 +73,13 @@ Reply with ONLY a valid JSON object, no markdown fences, no extra text:
 
 Status rules: healthy = success rate >= 90%; degraded = 70–89%; critical = < 70%.`;
 
-    const client = this.getClient();
+    const model = this.getModel();
+    const result = await model.generateContent(prompt);
 
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 512,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const raw = message.content[0]?.type === 'text' ? message.content[0].text.trim() : '';
+    // Strip markdown fences in case the model wraps the response
+    const raw = result.response.text().trim()
+      .replace(/^```(?:json)?\n?/, '')
+      .replace(/\n?```$/, '');
 
     let parsed: Omit<AiInsight, 'recordsAnalyzed' | 'generatedAt'>;
     try {
