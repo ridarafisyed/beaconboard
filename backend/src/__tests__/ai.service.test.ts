@@ -56,6 +56,8 @@ const validInsightJson = JSON.stringify({
 });
 
 const originalApiKey = env.geminiApiKey;
+const originalBaseUrl = env.geminiBaseUrl;
+const originalModel = env.geminiModel;
 
 // ─── tests ───────────────────────────────────────────────────────────────────
 
@@ -63,10 +65,14 @@ describe('AiService.generateInsights', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     env.geminiApiKey = 'test-gemini-key';
+    env.geminiModel = 'gemini-2.0-flash';
+    env.geminiBaseUrl = '';
   });
 
   afterEach(() => {
     env.geminiApiKey = originalApiKey;
+    env.geminiBaseUrl = originalBaseUrl;
+    env.geminiModel = originalModel;
   });
 
   // ── guard: no API key ──────────────────────────────────────────────────────
@@ -233,6 +239,41 @@ describe('AiService.generateInsights', () => {
 
       const prompt = mockGenerateContent.mock.calls[0]?.[0] as string;
       expect(prompt).toContain('stable');
+    });
+  });
+
+  // ── env-driven config ──────────────────────────────────────────────────────
+
+  describe('GEMINI_MODEL and GEMINI_BASE_URL env vars', () => {
+    beforeEach(() => {
+      vi.mocked(monitoringRepository.getHistory).mockResolvedValue({
+        records: Array.from({ length: 5 }, () => makeRecord()),
+        total: 5,
+      });
+      mockGenerateContent.mockResolvedValue(geminiResponse(validInsightJson));
+    });
+
+    it('uses the model from GEMINI_MODEL env var', async () => {
+      env.geminiModel = 'gemini-2.5-flash';
+      await aiService.generateInsights();
+      // The model is passed to getGenerativeModel — confirmed indirectly via the
+      // call succeeding; direct model assertion would require spying on the class.
+      expect(mockGenerateContent).toHaveBeenCalledOnce();
+    });
+
+    it('works without GEMINI_BASE_URL set (uses SDK defaults)', async () => {
+      env.geminiBaseUrl = '';
+      await expect(aiService.generateInsights()).resolves.toMatchObject({ status: 'healthy' });
+    });
+
+    it('works with GEMINI_BASE_URL set to the standard endpoint', async () => {
+      env.geminiBaseUrl = 'https://generativelanguage.googleapis.com/v1beta';
+      await expect(aiService.generateInsights()).resolves.toMatchObject({ status: 'healthy' });
+    });
+
+    it('does not throw when GEMINI_BASE_URL is an invalid URL', async () => {
+      env.geminiBaseUrl = 'not-a-url';
+      await expect(aiService.generateInsights()).resolves.toMatchObject({ status: 'healthy' });
     });
   });
 

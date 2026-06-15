@@ -1,18 +1,36 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { RequestOptions } from '@google/generative-ai';
 
 import { env } from '@/config/env.ts';
 import { monitoringRepository } from '@/modules/monitoring/monitoring.repository.ts';
 import { AppError } from '@/shared/errors/app-error.ts';
 import type { AiInsight } from './ai.types.ts';
 
-const MODEL = 'gemini-2.0-flash';
-
 class AiService {
+  // GEMINI_BASE_URL is "https://generativelanguage.googleapis.com/v1beta"
+  // The SDK expects baseUrl (origin) and apiVersion (e.g. "v1beta") separately.
+  private buildRequestOptions(): RequestOptions {
+    if (!env.geminiBaseUrl) return {};
+    try {
+      const url = new URL(env.geminiBaseUrl);
+      const versionMatch = url.pathname.match(/\/(v\d+(?:beta)?)\/?$/);
+      return {
+        baseUrl: url.origin,
+        ...(versionMatch?.[1] ? { apiVersion: versionMatch[1] } : {}),
+      };
+    } catch {
+      return {};
+    }
+  }
+
   private getModel() {
     if (!env.geminiApiKey) {
       throw new AppError(503, 'AI insights are not configured. Set GEMINI_API_KEY to enable this feature.');
     }
-    return new GoogleGenerativeAI(env.geminiApiKey).getGenerativeModel({ model: MODEL });
+    return new GoogleGenerativeAI(env.geminiApiKey).getGenerativeModel(
+      { model: env.geminiModel },
+      this.buildRequestOptions()
+    );
   }
 
   async generateInsights(limit = 50): Promise<AiInsight> {

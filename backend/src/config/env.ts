@@ -10,4 +10,6 @@ export const env = {
   corsOrigin: process.env.CORS_ORIGIN || '*',
   databaseUrl: process.env.DATABASE_URL || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
+  geminiBaseUrl: process.env.GEMINI_BASE_URL || '',
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
 };
