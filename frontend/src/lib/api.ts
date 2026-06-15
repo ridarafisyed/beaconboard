@@ -17,6 +17,8 @@ export type AiInsight = {
   recommendation: string;
   recordsAnalyzed: number;
   generatedAt: string;
+  fromCache: boolean;
+  // computed metrics for charts
   successRate: number;
   avgResponseTimeMs: number;
   minResponseTimeMs: number;
@@ -26,6 +28,9 @@ export type AiInsight = {
   trend: 'increasing' | 'decreasing' | 'stable';
   failureCount: number;
   errorCodes: number[];
+  // cost & quota
+  tokenUsage: { inputTokens: number; outputTokens: number; estimatedCostUsd: number };
+  rateLimit: { used: number; remaining: number; limit: number; resetAt: string | null };
 };
 
 export const api = {

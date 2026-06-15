@@ -7,3 +7,7 @@ export const getAiInsights = async (req: Request, res: Response) => {
   const result = await aiService.generateInsights(limit);
   res.status(200).json(result);
 };
+
+export const getAiRateLimit = async (_req: Request, res: Response) => {
+  res.status(200).json(aiService.getRateLimitStatus());
+};

@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // No real API key needed — Gemini SDK is fully mocked
 const mockGenerateContent = vi.hoisted(() => vi.fn());
+const mockCountTokens = vi.hoisted(() => vi.fn());
 
 vi.mock('@google/generative-ai', () => ({
   GoogleGenerativeAI: class {
     getGenerativeModel() {
-      return { generateContent: mockGenerateContent };
+      return { generateContent: mockGenerateContent, countTokens: mockCountTokens };
     }
   },
 }));
@@ -18,7 +19,7 @@ vi.mock('@/modules/monitoring/monitoring.repository.ts', () => ({
 }));
 
 import { monitoringRepository } from '@/modules/monitoring/monitoring.repository.ts';
-import { aiService } from '@/modules/ai/ai.service.ts';
+import { aiService, _resetForTesting } from '@/modules/ai/ai.service.ts';
 import { env } from '@/config/env.ts';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ function makeRecord(overrides: Partial<{
 
 // Simulates what Gemini returns
 const geminiResponse = (text: string) => ({
-  response: { text: () => text },
+  response: { text: () => text, usageMetadata: { candidatesTokenCount: 120 } },
 });
 
 const validInsightJson = JSON.stringify({
@@ -64,9 +65,11 @@ const originalModel = env.geminiModel;
 describe('AiService.generateInsights', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetForTesting(); // clear in-memory cache and rate-limit log between tests
     env.geminiApiKey = 'test-gemini-key';
     env.geminiModel = 'gemini-2.0-flash';
     env.geminiBaseUrl = '';
+    mockCountTokens.mockResolvedValue({ totalTokens: 500 });
   });
 
   afterEach(() => {

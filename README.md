@@ -41,8 +41,8 @@ On the dashboard you get:
 
 | Service | URL |
 |---|---|
-| Frontend | *(Vercel deployment URL)* |
-| Backend API docs | *(Render deployment URL)/api-docs* |
+| Frontend | https://beaconboard-six.vercel.app/ |
+| Backend API docs | *https://beaconboard.onrender.com/api-docs* |
 
 ---
 

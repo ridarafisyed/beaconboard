@@ -130,7 +130,14 @@ export function AIInsightsCard() {
             <path d="M8 1l1.4 4.2L14 7l-4.6 1.8L8 14l-1.4-5.2L2 7l4.6-1.8z" />
           </svg>
           <div>
-            <h2 className="text-sm font-semibold text-gray-700">AI Insights</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-gray-700">AI Insights</h2>
+              {insight?.fromCache && (
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                  cached
+                </span>
+              )}
+            </div>
             {insight && (
               <p className="text-xs text-gray-400">
                 {insight.recordsAnalyzed} records · {new Date(insight.generatedAt).toLocaleTimeString()}
@@ -317,6 +324,19 @@ export function AIInsightsCard() {
                   <p className="mt-0.5 text-sm text-gray-700">{insight.recommendation}</p>
                 </div>
               </div>
+            </div>
+
+            {/* Token usage + rate limit footer */}
+            <div className="flex items-center justify-between border-t border-gray-100 pt-3 text-[11px] text-gray-400">
+              <span>
+                {insight.tokenUsage.inputTokens.toLocaleString()} tokens · est.{' '}
+                <span className="font-medium text-gray-500">
+                  ${insight.tokenUsage.estimatedCostUsd.toFixed(6)}
+                </span>
+              </span>
+              <span>
+                {insight.rateLimit.remaining}/{insight.rateLimit.limit} requests remaining this hour
+              </span>
             </div>
           </div>
         )}
