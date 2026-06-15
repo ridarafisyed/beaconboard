@@ -48,16 +48,58 @@ On the dashboard you get:
 
 ## Getting started locally
 
+There are two ways to run Beaconboard locally: Docker (recommended, zero setup) or manually with Node.js.
+
+### Option A — Docker (single command)
+
+You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running. That's it — no Node.js, no database setup.
+
+```bash
+git clone https://github.com/ridarafisyed/beaconboard.git
+cd beaconboard
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| Backend API docs | http://localhost:5000/api-docs |
+
+Docker Compose starts three containers: a PostgreSQL database, the backend (runs migrations automatically on first boot), and the frontend. Everything is wired together — no manual configuration needed.
+
+**To enable AI Insights**, pass your Gemini API key (free at [aistudio.google.com](https://aistudio.google.com)):
+
+```bash
+GEMINI_API_KEY=your-key docker compose up --build
+```
+
+Or put it in a `.env` file at the repo root and Compose will pick it up automatically:
+
+```
+GEMINI_API_KEY=your-key
+```
+
+**To use your own database** (e.g. Neon) instead of the bundled Postgres container, override `DATABASE_URL` the same way:
+
+```
+DATABASE_URL=postgresql://user:pass@host/db
+GEMINI_API_KEY=your-key
+```
+
+---
+
+### Option B — Manual setup with Node.js
+
 You need Node.js 24 and a PostgreSQL database. [Neon](https://neon.tech) has a generous free tier that works out of the box.
 
-### 1. Clone the repo
+#### 1. Clone the repo
 
 ```bash
 git clone https://github.com/ridarafisyed/beaconboard.git
 cd beaconboard
 ```
 
-### 2. Set up the backend
+#### 2. Set up the backend
 
 ```bash
 cd backend
@@ -74,7 +116,7 @@ npm run dev               # starts on http://localhost:5000
 
 API docs (Swagger UI): `http://localhost:5000/api-docs`
 
-### 3. Set up the frontend
+#### 3. Set up the frontend
 
 In a separate terminal:
 
@@ -294,6 +336,7 @@ beaconboard/
 │   └── workflows/
 │       ├── ci.yml                  # type-check + test on every push
 │       └── monitoring-cron.yml     # hits the ping endpoint every 5 min
+├── docker-compose.yml              # single-command local setup
 ├── backend/
 │   ├── prisma/
 │   │   ├── schema.prisma           # database schema
@@ -307,7 +350,8 @@ beaconboard/
 │   │   │   └── monitoring/         # ping logic, SSE, history
 │   │   └── shared/                 # errors, middleware, utilities
 │   ├── .env.example
-│   └── Dockerfile
+│   ├── Dockerfile
+│   └── .dockerignore
 └── frontend/
     └── src/
         ├── app/                    # Next.js App Router (single page)
@@ -320,6 +364,10 @@ beaconboard/
 ---
 
 ## Deployment
+
+### Local → Docker Compose
+
+See [Getting started locally — Option A](#option-a--docker-single-command) above. One command, no external dependencies.
 
 ### Backend → Render
 
