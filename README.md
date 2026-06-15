@@ -62,8 +62,8 @@ docker compose up --build
 
 | Service | URL |
 |---|---|
-| Frontend | http://localhost:3000 |
-| Backend API docs | http://localhost:5000/api-docs |
+| Frontend | http://localhost:3001 |
+| Backend API docs | http://localhost:5001/api-docs |
 
 Docker Compose starts three containers: a PostgreSQL database, the backend (runs migrations automatically on first boot), and the frontend. Everything is wired together — no manual configuration needed.
 
