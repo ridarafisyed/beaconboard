@@ -3,15 +3,18 @@ name: Monitoring Cron
 on:
   schedule:
     - cron: '*/5 * * * *'
-  workflow_dispatch: # allow manual trigger from the Actions tab
+  workflow_dispatch:
 
 jobs:
   ping:
-    name: Trigger monitoring ping
     runs-on: ubuntu-latest
     steps:
       - name: Ping backend
         run: |
+          echo "Waking backend..."
+          curl --silent --show-error --max-time 60 "${{ secrets.BACKEND_URL }}/api/v1/health" || true
+
+          echo "Triggering monitoring ping..."
           curl --silent --show-error --fail \
-            --max-time 30 \
+            --max-time 120 \
             "${{ secrets.BACKEND_URL }}/api/v1/monitoring/jobs/ping"
