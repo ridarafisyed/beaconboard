@@ -92,13 +92,24 @@ describe('MonitoringService.executeMonitoringCycle', () => {
     expect(monitoringRepository.savePingResult).toHaveBeenCalledWith(mockHttpBinResult);
   });
 
-  it('does not save or emit when httpBinClient.ping throws', async () => {
+  it('saves a statusCode:0 record and emits it when httpBinClient.ping throws', async () => {
     vi.mocked(generateMonitoringPayload).mockReturnValue(mockPayload);
     vi.mocked(httpBinClient.ping).mockRejectedValue(new Error('timeout'));
 
-    await expect(monitoringService.executeMonitoringCycle()).rejects.toThrow('timeout');
-    expect(monitoringRepository.savePingResult).not.toHaveBeenCalled();
-    expect(monitoringEvents.emitPingResult).not.toHaveBeenCalled();
+    const failedSaved = { ...mockSavedRecord, statusCode: 0 };
+    vi.mocked(monitoringRepository.savePingResult).mockResolvedValue(failedSaved as any);
+
+    const result = await monitoringService.executeMonitoringCycle();
+
+    expect(monitoringRepository.savePingResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: 0,
+        requestPayload: mockPayload,
+        responseBody: { error: 'timeout' },
+      })
+    );
+    expect(monitoringEvents.emitPingResult).toHaveBeenCalledWith(failedSaved);
+    expect(result).toBe(failedSaved);
   });
 
   it('does not emit when the repository throws', async () => {

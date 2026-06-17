@@ -2,17 +2,27 @@ import { httpBinClient } from './httpbin.client.ts';
 import { monitoringEvents } from './monitoring.events.ts';
 import { generateMonitoringPayload } from './payload-generator.ts';
 import { monitoringRepository } from './monitoring.repository.ts';
+import type { HttpBinPingResult } from './monitoring.types.ts';
 
 class MonitoringService {
   async executeMonitoringCycle() {
     const payload = generateMonitoringPayload();
+    const startedAt = Date.now();
 
-    const result = await httpBinClient.ping(payload);
+    let pingResult: HttpBinPingResult;
+    try {
+      pingResult = await httpBinClient.ping(payload);
+    } catch (error) {
+      pingResult = {
+        statusCode: 0,
+        responseTimeMs: Date.now() - startedAt,
+        requestPayload: payload,
+        responseBody: { error: error instanceof Error ? error.message : 'Unknown error' },
+      };
+    }
 
-    const saved = await monitoringRepository.savePingResult(result);
-
+    const saved = await monitoringRepository.savePingResult(pingResult);
     monitoringEvents.emitPingResult(saved);
-
     return saved;
   }
 
