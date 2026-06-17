@@ -14,4 +14,4 @@ jobs:
         run: |
           curl --silent --show-error --fail \
             --max-time 30 \
-            -X POST "${{ secrets.BACKEND_URL }}/api/v1/monitoring/jobs/ping"
+            "${{ secrets.BACKEND_URL }}/api/v1/monitoring/jobs/ping"

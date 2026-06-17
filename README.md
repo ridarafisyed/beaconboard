@@ -320,7 +320,7 @@ Full interactive docs are at `/api-docs` on the running backend. Quick reference
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/v1/health` | Health check |
-| `POST` | `/api/v1/monitoring/jobs/ping` | Trigger a manual ping |
+| `GET` | `/api/v1/monitoring/jobs/ping` | Trigger a manual ping |
 | `GET` | `/api/v1/monitoring/history?page=1&limit=20` | Paginated ping history |
 | `GET` | `/api/v1/monitoring/events` | SSE stream of live results |
 | `GET` | `/api/v1/ai/insights` | Generate AI health summary (cached 5 min) |

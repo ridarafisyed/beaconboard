@@ -10,7 +10,7 @@
  *    exercising the full Express middleware stack.
  *
  * Coverage:
- *  POST /api/v1/monitoring/jobs/ping  — trigger, success + error paths
+ *  GET /api/v1/monitoring/jobs/ping  — trigger, success + error paths
  *  GET  /api/v1/monitoring/history   — pagination defaults, custom params, clamping, error
  *  GET  /api/v1/monitoring/events    — SSE headers, listener registration
  */
@@ -72,13 +72,13 @@ const mockHistoryPage = (overrides?: object) => ({
 // POST /api/v1/monitoring/jobs/ping
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('POST /api/v1/monitoring/jobs/ping', () => {
+describe('GET /api/v1/monitoring/jobs/ping', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns 200 with the ping result on success', async () => {
     vi.mocked(monitoringJob.run).mockResolvedValue(mockPingResult as any);
 
-    const res = await request(app).post('/api/v1/monitoring/jobs/ping');
+    const res = await request(app).get('/api/v1/monitoring/jobs/ping');
 
     expect(res.status).toBe(200);
     expect(res.body.message).toBe('Monitoring job executed successfully');
@@ -90,7 +90,7 @@ describe('POST /api/v1/monitoring/jobs/ping', () => {
   it('returns 500 when the job throws', async () => {
     vi.mocked(monitoringJob.run).mockRejectedValue(new Error('httpbin unavailable'));
 
-    const res = await request(app).post('/api/v1/monitoring/jobs/ping');
+    const res = await request(app).get('/api/v1/monitoring/jobs/ping');
 
     expect(res.status).toBe(500);
   });
@@ -98,7 +98,7 @@ describe('POST /api/v1/monitoring/jobs/ping', () => {
   it('calls monitoringJob.run exactly once per request', async () => {
     vi.mocked(monitoringJob.run).mockResolvedValue(mockPingResult as any);
 
-    await request(app).post('/api/v1/monitoring/jobs/ping');
+    await request(app).get('/api/v1/monitoring/jobs/ping');
 
     expect(monitoringJob.run).toHaveBeenCalledOnce();
   });

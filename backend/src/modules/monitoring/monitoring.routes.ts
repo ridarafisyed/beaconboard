@@ -8,7 +8,7 @@ const router = Router();
 /**
  * @openapi
  * /monitoring/jobs/ping:
- *   post:
+ *   get:
  *     summary: Manually trigger httpbin monitoring job
  *     tags:
  *       - Monitoring
@@ -16,7 +16,7 @@ const router = Router();
  *       200:
  *         description: Monitoring job executed successfully
  */
-router.post('/jobs/ping', asyncHandler(triggerMonitoringJob));
+router.get('/jobs/ping', asyncHandler(triggerMonitoringJob));
 
 /**
  * @openapi
